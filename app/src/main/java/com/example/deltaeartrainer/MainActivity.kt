@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
         // initialize default output device
         if (!BASS.BASS_Init(-1, 44100, 0)) {
-            print("fail eh")
+            throw Error("can't init bass")
         }
         BASSMIDI.BASS_MIDI_GetVersion() // force BASSMIDI to load
         BASS.BASS_SetConfig(BASSMIDI.BASS_CONFIG_MIDI_VOICES, 128) // set default voice limit
