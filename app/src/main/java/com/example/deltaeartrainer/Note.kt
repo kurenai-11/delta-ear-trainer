@@ -1,13 +1,13 @@
 package com.example.deltaeartrainer
 
-class Note {
+class Note private constructor() {
     var midiIndex: Int = -1
 
-    constructor(index: Int) {
+    constructor(index: Int) : this() {
         midiIndex = index
     }
 
-    constructor(noteName: String) {
+    constructor(noteName: String) : this() {
         var input = noteName
         input = input.uppercase()
         if (input.contains("#")) {

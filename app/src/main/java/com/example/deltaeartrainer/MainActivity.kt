@@ -199,9 +199,10 @@ fun MainScreen(
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { e -> expanded = e }) {
-                    OutlinedTextField(
+                    TextField(
                         readOnly = true,
                         value = selectedOptionText,
+                        label = {Text("Soundfont")},
                         onValueChange = {},
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
