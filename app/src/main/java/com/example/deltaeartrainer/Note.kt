@@ -43,6 +43,11 @@ class Note {
             return _name.replace("s", "#").substring(0 until 2)
         }
 
+    val pianoKeyNumber: Int
+        get() {
+            return notes.indexOf(_name) + 1
+        }
+
     operator fun plus(semitones: Int): Note {
         if (midiIndex + semitones > notes.size + midiOffset || midiIndex + semitones < midiOffset) {
             throw Exception("wrong math bruh")
@@ -152,6 +157,6 @@ class Note {
             "B7",
             "C8"
         )
-        private const val midiOffset = 21
+        const val midiOffset = 21
     }
 }

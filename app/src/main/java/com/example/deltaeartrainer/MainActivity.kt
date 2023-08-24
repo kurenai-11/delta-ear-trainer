@@ -232,8 +232,8 @@ fun MainScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row {
                 var expanded by remember { mutableStateOf(false) }
-                val options = (1..88).map { v -> v.toString() }
-                var selectedOptionText by remember { mutableStateOf(options[0]) }
+                val options = (0 until 88).map { v -> Note(v + Note.midiOffset).name }
+                var selectedOptionText by remember { mutableStateOf(options[39]) }
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { e -> expanded = e }) {
@@ -256,18 +256,14 @@ fun MainScreen(
                             expanded = false
                         }
                     ) {
-                        Box(modifier = Modifier.size(width = 100.dp, height = 300.dp)) {
-                            LazyColumn {
-                                items(options) { item ->
-                                    DropdownMenuItem(
-                                        onClick = {
-                                            selectedOptionText = item
-                                            expanded = false
-                                        },
-                                        text = { Text(text = item) }
-                                    )
-                                }
-                            }
+                        options.forEach { selectionOption ->
+                            DropdownMenuItem(
+                                onClick = {
+                                    selectedOptionText = selectionOption
+                                    expanded = false
+                                },
+                                text = { Text(text = selectionOption) }
+                            )
                         }
                     }
                 }
@@ -275,8 +271,8 @@ fun MainScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row {
                 var expanded by remember { mutableStateOf(false) }
-                val options = (1..88).map { v -> v.toString() }
-                var selectedOptionText by remember { mutableStateOf(options[0]) }
+                val options = (0 until 88).map { v -> Note(v + Note.midiOffset).name }
+                var selectedOptionText by remember { mutableStateOf(options[51]) }
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { e -> expanded = e }) {
