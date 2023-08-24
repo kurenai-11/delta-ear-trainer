@@ -1,5 +1,7 @@
 package com.example.deltaeartrainer
 
+import android.content.res.AssetManager
+import android.content.res.AssetManager.AssetInputStream
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -40,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import com.example.deltaeartrainer.ui.theme.DeltaEarTrainerTheme
 import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
-import com.un4seen.bass.BASSMIDI.BASS_MIDI_FONT
 import java.io.InputStream
 import java.nio.ByteBuffer
 import kotlin.math.roundToInt
@@ -73,20 +74,21 @@ fun getBuffer(resource: InputStream): ByteBuffer {
     return ByteBuffer.wrap(bytes)
 }
 
-fun playChord(midiChan: Int, notes: List<Int>, velocity: Int = 127) {
-    val events: MutableList<BASSMIDI.BASS_MIDI_EVENT> = mutableListOf()
-    for (note in notes) {
+fun playChord(midiChan: Int, notes: IntArray, velocity: Int = 127) {
+    val events = notes.map { note ->
         val event = BASSMIDI.BASS_MIDI_EVENT()
         event.event = BASSMIDI.MIDI_EVENT_NOTE
         event.param = createDword(note, velocity)
-        events.add(event)
-    }
+        event
+    }.toTypedArray()
     BASSMIDI.BASS_MIDI_StreamEvents(
         midiChan,
         BASSMIDI.BASS_MIDI_EVENTS_STRUCT,
-        Array(events.size) { i -> events[i] }, events.size
+        events,
+        events.size
     )
 }
+
 
 class MainActivity : ComponentActivity() {
     private var midiChan = 0 // midi channel handle
@@ -118,7 +120,7 @@ class MainActivity : ComponentActivity() {
         if (font == 0) {
             throw Error("font bad")
         } else {
-            val sf = arrayOf(BASS_MIDI_FONT())
+            val sf = arrayOf(BASSMIDI.BASS_MIDI_FONT())
             sf[0].font = font
             sf[0].bank = 0
             sf[0].preset = -1
@@ -135,6 +137,14 @@ class MainActivity : ComponentActivity() {
             val presetName = BASSMIDI.BASS_MIDI_FontGetPreset(font, presets[i], 0)
             Log.d("Info", "Preset name: $presetName ind: $i")
         }
+        val soundfonts =
+            listOf(
+                SoundFont("Steinway", R.raw.steinway),
+                SoundFont("Guitars 1 (general)", R.raw.guitars1),
+                SoundFont("Guitars 2 (more acoustic)", R.raw.guitars2),
+                SoundFont("Flute", R.raw.flute),
+                SoundFont("Strings", R.raw.strings),
+            )
 
         setContent {
             DeltaEarTrainerTheme {
@@ -142,7 +152,7 @@ class MainActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(BassData(midiChan, fontChan))
+                    MainScreen(BassData(midiChan, fontChan, soundfonts))
                 }
             }
         }
@@ -160,10 +170,11 @@ class MainActivity : ComponentActivity() {
 }
 
 class MainScreenPreviewParameterProvider1 : PreviewParameterProvider<BassData> {
-    override val values = sequenceOf(BassData(0, 0))
+    override val values = sequenceOf(BassData(0, 0, listOf(SoundFont("Soundfont", 123))))
 }
 
-data class BassData(val midiChan: Int, val fontChan: Int)
+data class BassData(val midiChan: Int, val fontChan: Int, val soundfonts: List<SoundFont>)
+data class SoundFont(val name: String, val resourceId: Int)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
@@ -171,6 +182,7 @@ data class BassData(val midiChan: Int, val fontChan: Int)
 fun MainScreen(
     @PreviewParameter(MainScreenPreviewParameterProvider1::class) bassData: BassData
 ) {
+    val (midiChan, fontChan, soundfonts) = bassData
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -183,16 +195,14 @@ fun MainScreen(
         ) {
             Row {
                 var expanded by remember { mutableStateOf(false) }
-                val options =
-                    listOf("Steinway", "Guitars", "Flute", "Nylon and steel guitars", "Strings")
-                var selectedOptionText by remember { mutableStateOf(options[0]) }
+                var selectedOptionText by remember { mutableStateOf(soundfonts[0].name) }
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { e -> expanded = e }) {
                     OutlinedTextField(
                         readOnly = true,
                         value = selectedOptionText,
-                        onValueChange = { },
+                        onValueChange = {},
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
                                 expanded = expanded
@@ -207,13 +217,13 @@ fun MainScreen(
                             expanded = false
                         }
                     ) {
-                        options.forEach { selectionOption ->
+                        soundfonts.forEach { (name, resourceStream) ->
                             DropdownMenuItem(
                                 onClick = {
-                                    selectedOptionText = selectionOption
+                                    selectedOptionText = name
                                     expanded = false
                                 },
-                                text = { Text(text = selectionOption) }
+                                text = { Text(text = name) }
                             )
                         }
                     }
@@ -313,11 +323,13 @@ fun MainScreen(
                 valueRange = 20F..160F
             )
             Button(onClick = {
-                playNote(bassData.midiChan, 60)
-                Thread.sleep(1000)
-                stopNote(bassData.midiChan, 60)
+                val note = Note("C4")
+                Log.d("Info", "Playing note: ${note.name}, midiIndex: ${note.midiIndex}")
+                playNote(midiChan, note.midiIndex)
+                Thread.sleep(2000)
+                stopNote(midiChan, note.midiIndex)
             }) {
-                Text(text = "Play C")
+                Text(text = "Play a note")
             }
         }
     }
