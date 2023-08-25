@@ -7,18 +7,25 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -177,13 +184,14 @@ class MainScreenPreviewParameterProvider1 : PreviewParameterProvider<BassData> {
 data class BassData(val midiChan: Int, val fontChan: Int, val soundfonts: List<SoundFont>)
 data class SoundFont(val name: String, val resourceId: Int)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Preview(showBackground = true)
 @Composable
 fun MainScreen(
     @PreviewParameter(MainScreenPreviewParameterProvider1::class) bassData: BassData
 ) {
     val (midiChan, fontChan, soundfonts) = bassData
+    val chosenNotes = mutableListOf<PitchClass>()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -328,6 +336,33 @@ fun MainScreen(
                 stopNote(midiChan, note.midiIndex)
             }) {
                 Text(text = "Play a note")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            FlowRow(horizontalArrangement = Arrangement.Center, maxItemsInEachRow = 4) {
+                PitchClass.values().forEach {
+                    var checked by remember { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                checked = !checked
+                                if (checked) {
+                                    chosenNotes.add(it)
+                                } else {
+                                    chosenNotes.remove(it)
+                                }
+                                Log.d("Info", "chosenNotes: $chosenNotes")
+                            }
+                            .requiredHeight(ButtonDefaults.MinHeight),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = checked, onCheckedChange = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = it.toString())
+                    }
+                }
             }
         }
     }
