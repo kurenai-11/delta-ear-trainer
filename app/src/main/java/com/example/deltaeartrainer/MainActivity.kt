@@ -1,5 +1,6 @@
 package com.example.deltaeartrainer
 
+import android.app.Activity
 import android.content.res.AssetManager
 import android.content.res.AssetManager.AssetInputStream
 import android.os.Bundle
@@ -202,7 +203,7 @@ fun MainScreen(
                     TextField(
                         readOnly = true,
                         value = selectedOptionText,
-                        label = {Text("Soundfont")},
+                        label = { Text("Soundfont") },
                         onValueChange = {},
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
@@ -320,7 +321,7 @@ fun MainScreen(
                 valueRange = 20F..160F
             )
             Button(onClick = {
-                val note = Note("C4")
+                val note = Note(PitchClass.C, 4)
                 Log.d("Info", "Playing note: ${note.name}, midiIndex: ${note.midiIndex}")
                 playNote(midiChan, note.midiIndex)
                 Thread.sleep(2000)

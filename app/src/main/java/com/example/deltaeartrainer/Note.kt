@@ -1,5 +1,7 @@
 package com.example.deltaeartrainer
 
+import kotlin.math.ceil
+
 class Note private constructor() {
     var midiIndex: Int = -1
 
@@ -7,56 +9,77 @@ class Note private constructor() {
         midiIndex = index
     }
 
-    constructor(noteName: String) : this() {
-        var input = noteName
-        input = input.uppercase()
-        if (input.contains("#")) {
-            input = input.replace("#", "s")
-            midiIndex = notes.indexOf(notes.find { it == input }
-                ?: throw Exception("wrong input when creating a note")) + midiOffset
-        } else if (input.length > 2 && input.contains("F")) {
-            input = input.replace("F", "")
-            val naturalNote =
-                notes.indexOf(notes.find { it == input }
-                    ?: throw Exception("wrong input when creating a note")) + midiOffset
-            midiIndex = naturalNote - 1
+    constructor(pitchClass: PitchClass, octave: Int = 4) : this() {
+        midiIndex = if (octave == 0) {
+            if (!arrayOf(PitchClass.A, PitchClass.ASharp, PitchClass.B).contains(pitchClass)) {
+                throw Exception("wrong input bruh")
+            }
+            midiOffset + pitchClass.ordinal
         } else {
-            midiIndex = notes.indexOf(notes.find { it == input }
-                ?: throw Exception("wrong input when creating a note")) + midiOffset
+            3 + midiOffset + ((octave - 1) * 12) + pitchClass.ordinal
         }
     }
 
-    private val _name: String
+    val pitch: PitchClass
         get() {
-            return notes[midiIndex - midiOffset]
+            return when (midiIndex) {
+                in 0..2 -> {
+                    PitchClass.values()[midiIndex + 9]
+                }
+
+                in 3..108 -> {
+                    PitchClass.values()[(midiIndex % 12)]
+                }
+
+                else -> {
+                    throw Exception("error getting pitch class")
+                }
+            }
         }
+
+    val octave: Int
+        get() {
+            return when (pianoKeyNumber) {
+                in 0..2 -> {
+                    0
+                }
+
+                in 3..88 -> {
+                    ceil((pianoKeyNumber.toDouble() - 3) / 12).toInt()
+                }
+
+                else -> {
+                    throw Exception("octave out of bounds")
+                }
+            }
+        }
+
     val name: String
         get() {
-            if (!_name.contains("s")) return _name
-            val sharped = _name.replace("s", "#")
-            val flatted = Note(midiIndex + 1)._name.toCharArray().joinToString("f")
-            return "$sharped/$flatted"
+            return pitch.toString() + octave
         }
-    val nameSharped: String
+    val fullName: String
         get() {
-            if (!_name.contains("s")) return _name[0].toString()
-            return _name.replace("s", "#").substring(0 until 2)
+            if (!name.contains("#")) return name
+            val sharped = name
+            val flatted = (pitch - 1).toString() + "f"
+            return "$sharped/$flatted"
         }
 
     val pianoKeyNumber: Int
         get() {
-            return notes.indexOf(_name) + 1
+            return midiIndex - midiOffset + 1
         }
 
     operator fun plus(semitones: Int): Note {
-        if (midiIndex + semitones > notes.size + midiOffset || midiIndex + semitones < midiOffset) {
+        if (midiIndex + semitones > 88 + midiOffset || midiIndex + semitones < midiOffset) {
             throw Exception("wrong math bruh")
         }
         return Note(midiIndex + semitones)
     }
 
     operator fun minus(semitones: Int): Note {
-        if (midiIndex - semitones > notes.size + midiOffset || midiIndex - semitones < midiOffset) {
+        if (midiIndex - semitones > 88 + midiOffset || midiIndex - semitones < midiOffset) {
             throw Exception("wrong math bruh")
         }
         return Note(midiIndex - semitones)
@@ -67,96 +90,6 @@ class Note private constructor() {
     }
 
     companion object {
-        private val notes = arrayOf(
-            "A0",
-            "As0",
-            "B0",
-            "C1",
-            "Cs1",
-            "D1",
-            "Ds1",
-            "E1",
-            "F1",
-            "Fs1",
-            "G1",
-            "Gs1",
-            "A1",
-            "As1",
-            "B1",
-            "C2",
-            "Cs2",
-            "D2",
-            "Ds2",
-            "E2",
-            "F2",
-            "Fs2",
-            "G2",
-            "Gs2",
-            "A2",
-            "As2",
-            "B2",
-            "C3",
-            "Cs3",
-            "D3",
-            "Ds3",
-            "E3",
-            "F3",
-            "Fs3",
-            "G3",
-            "Gs3",
-            "A3",
-            "As3",
-            "B3",
-            "C4",
-            "Cs4",
-            "D4",
-            "Ds4",
-            "E4",
-            "F4",
-            "Fs4",
-            "G4",
-            "Gs4",
-            "A4",
-            "As4",
-            "B4",
-            "C5",
-            "Cs5",
-            "D5",
-            "Ds5",
-            "E5",
-            "F5",
-            "Fs5",
-            "G5",
-            "Gs5",
-            "A5",
-            "As5",
-            "B5",
-            "C6",
-            "Cs6",
-            "D6",
-            "Ds6",
-            "E6",
-            "F6",
-            "Fs6",
-            "G6",
-            "Gs6",
-            "A6",
-            "As6",
-            "B6",
-            "C7",
-            "Cs7",
-            "D7",
-            "Ds7",
-            "E7",
-            "F7",
-            "Fs7",
-            "G7",
-            "Gs7",
-            "A7",
-            "As7",
-            "B7",
-            "C8"
-        )
         const val midiOffset = 21
     }
 }
