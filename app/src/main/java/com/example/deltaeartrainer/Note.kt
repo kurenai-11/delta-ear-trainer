@@ -86,7 +86,7 @@ class Note private constructor() {
     }
 
     override fun toString(): String {
-        return "Note: $name"
+        return name
     }
 
     companion object {
