@@ -269,13 +269,14 @@ fun MainScreen(
                                 // list presets
                                 val fontInfo = BASSMIDI.BASS_MIDI_FONTINFO()
                                 BASSMIDI.BASS_MIDI_FontGetInfo(font, fontInfo)
-                                val presetsIds = IntArray(fontInfo.presets)
-                                BASSMIDI.BASS_MIDI_FontGetPresets(font, presetsIds)
-                                for (i in presetsIds.indices) {
+                                val presetIds = IntArray(fontInfo.presets)
+                                BASSMIDI.BASS_MIDI_FontGetPresets(font, presetIds)
+                                for (i in presetIds.indices) {
+                                    val presetId = presetIds[i]
                                     val presetName =
-                                        BASSMIDI.BASS_MIDI_FontGetPreset(font, presetsIds[i], 0)
-                                    Log.d("Info", "Preset name: $presetName ind: $i")
-                                    presets.add(Preset(presetName, i))
+                                        BASSMIDI.BASS_MIDI_FontGetPreset(font, presetId, 0)
+                                    Log.d("Info", "Preset name: $presetName ind: $presetId")
+                                    presets.add(Preset(presetName, presetId))
                                 }
                             }, text = { Text(text = name) })
                         }
