@@ -5,7 +5,9 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,10 +48,6 @@ import androidx.compose.ui.unit.dp
 import com.example.deltaeartrainer.ui.theme.DeltaEarTrainerTheme
 import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
-import java.io.InputStream
-import java.nio.ByteBuffer
-import java.util.Timer
-import kotlin.concurrent.schedule
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.random.nextInt
@@ -93,10 +91,6 @@ class MainActivity : ComponentActivity() {
     private var midiChan = 0 // midi channel handle
     private var fontChan = 0 // soundfont channel handle
 
-    fun abc() {
-        Log.d("Info", "hey")
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -119,21 +113,13 @@ class MainActivity : ComponentActivity() {
 
         BASS.BASS_ChannelPlay(midiChan, false) // start playing
 
-        val soundfonts = listOf(
-            SoundFont("Steinway", R.raw.steinway),
-            SoundFont("Guitars 1 (general)", R.raw.guitars1),
-            SoundFont("Guitars 2 (more acoustic)", R.raw.guitars2),
-            SoundFont("Flute", R.raw.flute),
-            SoundFont("Strings", R.raw.strings),
-        )
-
         setContent {
             DeltaEarTrainerTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(BassData(midiChan, fontChan, soundfonts))
+                    MainScreen(BassData(midiChan, fontChan))
                 }
             }
         }
@@ -151,11 +137,10 @@ class MainActivity : ComponentActivity() {
 }
 
 class MainScreenPreviewParameterProvider1 : PreviewParameterProvider<BassData> {
-    override val values = sequenceOf(BassData(0, 0, listOf(SoundFont("Soundfont", 123))))
+    override val values = sequenceOf(BassData(0, 0))
 }
 
-data class BassData(val midiChan: Int, val fontChan: Int, val soundfonts: List<SoundFont>)
-data class SoundFont(val name: String, val resourceId: Int)
+data class BassData(val midiChan: Int, val fontChan: Int)
 data class Preset(val name: String, val index: Int)
 
 fun getPlayableNotes(
@@ -179,7 +164,7 @@ fun MainScreen(
     @PreviewParameter(MainScreenPreviewParameterProvider1::class) bassData: BassData,
     context: Context = LocalContext.current
 ) {
-    val (midiChan, fontChan, soundfonts) = bassData
+    val (midiChan, fontChan) = bassData
     var chosenNotes by remember { mutableStateOf(arrayOf<PitchClass>()) }
     var selectedLowestNote by remember { mutableStateOf(Note(PitchClass.C)) }
     var selectedHighestNote by remember { mutableStateOf(Note(PitchClass.C, 5)) }
@@ -192,7 +177,8 @@ fun MainScreen(
         )
     }
 
-    var presets: MutableList<Preset> by remember { mutableStateOf(mutableListOf()) }
+    var presets by remember { mutableStateOf(arrayOf<Preset>()) }
+    var selectedPreset by remember { mutableStateOf<Preset?>(null) }
 
     var readyToPlay by remember { mutableStateOf(false) }
 
@@ -206,93 +192,77 @@ fun MainScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxSize()
         ) {
-            Row {
-                var expanded by remember { mutableStateOf(false) }
-                var selectedOptionText by remember { mutableStateOf("") }
-                ExposedDropdownMenuBox(expanded = expanded,
-                    onExpandedChange = { e -> expanded = e }) {
-                    TextField(
-                        readOnly = true,
-                        value = selectedOptionText,
-                        label = { Text("Soundfont") },
-                        onValueChange = {},
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = expanded
-                            )
-                        },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                        modifier = Modifier.menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = {
-                        expanded = false
-                    }) {
-                        soundfonts.forEach { (name, resourceId) ->
-                            val resource =
-                                context.resources.openRawResource(resourceId)
-                            DropdownMenuItem(onClick = {
-                                selectedOptionText = name
-                                expanded = false
-                                BASSMIDI.BASS_MIDI_FontFree(fontChan)
-                                presets = mutableListOf()
-                                val font = BASSMIDI.BASS_MIDI_FontInit(
-                                    ByteBuffer.wrap(resource.readBytes()),
-                                    0
-                                )
-                                if (font == 0) {
-                                    Log.d("Info", "Font bad")
-                                } else {
-                                    val sf = arrayOf(BASSMIDI.BASS_MIDI_FONT())
-                                    sf[0].font = font
-                                    sf[0].bank = 0
-                                    sf[0].preset = -1
-                                    BASSMIDI.BASS_MIDI_StreamSetFonts(
-                                        0,
-                                        sf,
-                                        1
-                                    ) // set default soundfont
-                                    BASSMIDI.BASS_MIDI_StreamSetFonts(
-                                        midiChan,
-                                        sf,
-                                        1
-                                    ) // set for current stream too
-                                }
-                                BASSMIDI.BASS_MIDI_StreamEvent(
-                                    midiChan,
-                                    0,
-                                    BASSMIDI.MIDI_EVENT_PROGRAM,
-                                    0
-                                )
+            val selectFileActivity = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) {
+                // load soundfont
+                Log.d("Info", "selected uri $it")
+                Log.d("Info", "selected path ${it?.encodedPath}")
+                Log.d("Info", "is absolute ${it?.isAbsolute}")
+                Log.d("Info", "is relative ${it?.isRelative}")
+                if (it == null) return@rememberLauncherForActivityResult
+                BASSMIDI.BASS_MIDI_FontFree(fontChan)
+                val presetsTemp = mutableListOf<Preset>()
+                val descriptor = context.contentResolver.openFileDescriptor(it, "r")
+                val font = BASSMIDI.BASS_MIDI_FontInit(descriptor, 0)
+                if (font == 0) {
+                    val errCode = BASS.BASS_ErrorGetCode()
+                    Log.d("Info", "Font bad, $errCode")
+                    return@rememberLauncherForActivityResult
+                } else {
+                    val sf = arrayOf(BASSMIDI.BASS_MIDI_FONT())
+                    sf[0].font = font
+                    sf[0].bank = 0
+                    sf[0].preset = -1
+                    BASSMIDI.BASS_MIDI_StreamSetFonts(
+                        0,
+                        sf,
+                        1
+                    ) // set default soundfont
+                    BASSMIDI.BASS_MIDI_StreamSetFonts(
+                        midiChan,
+                        sf,
+                        1
+                    ) // set for current stream too
+                }
+                BASSMIDI.BASS_MIDI_StreamEvent(
+                    midiChan,
+                    0,
+                    BASSMIDI.MIDI_EVENT_PROGRAM,
+                    0
+                )
 
-                                readyToPlay = true
+                readyToPlay = true
 
-                                // list presets
-                                val fontInfo = BASSMIDI.BASS_MIDI_FONTINFO()
-                                BASSMIDI.BASS_MIDI_FontGetInfo(font, fontInfo)
-                                val presetIds = IntArray(fontInfo.presets)
-                                BASSMIDI.BASS_MIDI_FontGetPresets(font, presetIds)
-                                for (i in presetIds.indices) {
-                                    val presetId = presetIds[i]
-                                    val presetName =
-                                        BASSMIDI.BASS_MIDI_FontGetPreset(font, presetId, 0)
-                                    Log.d("Info", "Preset name: $presetName ind: $presetId")
-                                    presets.add(Preset(presetName, presetId))
-                                }
-                            }, text = { Text(text = name) })
-                        }
-                    }
+                // list presets
+                val fontInfo = BASSMIDI.BASS_MIDI_FONTINFO()
+                BASSMIDI.BASS_MIDI_FontGetInfo(font, fontInfo)
+                val presetIds = IntArray(fontInfo.presets)
+                BASSMIDI.BASS_MIDI_FontGetPresets(font, presetIds)
+                for (i in presetIds.indices) {
+                    val presetId = presetIds[i]
+                    val presetName =
+                        BASSMIDI.BASS_MIDI_FontGetPreset(font, presetId, 0)
+                    Log.d("Info", "Preset name: $presetName ind: $presetId")
+                    presetsTemp.add(Preset(presetName, presetId))
+                }
+                if (presetsTemp.size > 0) {
+                    presets = presetsTemp.toTypedArray()
+                    selectedPreset = presets[0]
                 }
             }
+            Button(onClick = { selectFileActivity.launch(arrayOf("application/octet-stream")) }) {
+                Text(text = "Open .sf2 soundfont")
+            }
             Spacer(modifier = Modifier.height(8.dp))
-            if (presets.size > 0) {
+            if (presets.isNotEmpty()) {
                 Row {
                     var expanded by remember { mutableStateOf(false) }
-                    var selectedPreset by remember { mutableStateOf(presets[0]) }
                     ExposedDropdownMenuBox(expanded = expanded,
                         onExpandedChange = { e -> expanded = e }) {
                         TextField(
                             readOnly = true,
-                            value = selectedPreset.name,
+                            value = selectedPreset?.name ?: "",
                             onValueChange = { },
                             label = { Text("Preset") },
                             trailingIcon = {
