@@ -141,7 +141,7 @@ class MainScreenPreviewParameterProvider1 : PreviewParameterProvider<BassData> {
 }
 
 data class BassData(val midiChan: Int, val fontChan: Int)
-data class Preset(val name: String, val index: Int)
+data class Preset(val name: String?, val index: Int)
 
 fun getPlayableNotes(
     chosenNotes: Array<PitchClass>,
@@ -290,7 +290,7 @@ fun MainScreen(
                                         BASSMIDI.MIDI_EVENT_PROGRAM,
                                         preset.index
                                     )
-                                }, text = { Text(text = preset.name) })
+                                }, text = { Text(text = preset.name ?: "(no name)") })
                             }
                         }
                     }
