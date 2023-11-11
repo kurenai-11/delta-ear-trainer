@@ -1,4 +1,4 @@
-package com.example.deltaeartrainer
+package com.kurenai11.deltaeartrainer
 
 import kotlin.math.ceil
 

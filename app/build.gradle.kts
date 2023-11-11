@@ -2,13 +2,14 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+val defaultApplicationId by extra(rootProject.extra["deltaeartrainer"] as String)
 
 android {
-    namespace = "com.example.deltaeartrainer"
+    namespace = "com.kurenai11.deltaeartrainer"
     compileSdk = 33
 
     defaultConfig {
-        applicationId = "com.example.deltaeartrainer"
+        applicationId = rootProject.extra["deltaeartrainer"] as String
         minSdk = 24
         targetSdk = 33
         versionCode = 1
@@ -66,6 +67,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.legacy:legacy-support-v4:1.0.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     testImplementation("junit:junit:4.13.2")
     implementation("androidx.compose.material:material-icons-extended")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

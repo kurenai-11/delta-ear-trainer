@@ -1,4 +1,4 @@
-package com.example.deltaeartrainer
+package com.kurenai11.deltaeartrainer
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -45,7 +48,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import com.example.deltaeartrainer.ui.theme.DeltaEarTrainerTheme
+import androidx.compose.ui.unit.sp
+import com.kurenai11.deltaeartrainer.ui.theme.DeltaEarTrainerTheme
 import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
 import kotlin.math.roundToInt
@@ -156,6 +160,58 @@ fun getPossibleNotes(lowestNote: Note, highestNote: Note): List<Note> {
     return (0..(highestNote.midiIndex - lowestNote.midiIndex)).map { lowestNote + it }
 }
 
+@Composable
+fun NoteRow(
+    bounds: IntRange = 0 until 88,
+    onChoose: ((note: Note) -> Unit)? = null,
+    defaultNote: Note = Note(PitchClass.C, 4)
+) {
+    var activeNote by remember { mutableStateOf(defaultNote) }
+    val lazyListState = rememberLazyListState((defaultNote - 3).pianoKeyNumber - 1)
+    LazyRow(state = lazyListState) {
+        items(bounds.count()) {
+            val note = Note(Note.midiOffset + it)
+            NoteListItem(
+                note = note,
+                active = (activeNote.midiIndex) == note.midiIndex,
+                onClicked = { clickedNote ->
+                    activeNote = clickedNote
+                    if (onChoose != null) {
+                        onChoose(note)
+                    }
+                })
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoteListItem(note: Note, active: Boolean, onClicked: ((note: Note) -> Unit)? = null) {
+    Surface(
+        color = if (active) MaterialTheme.colorScheme.surfaceTint else MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .width(50.dp)
+            .height(50.dp),
+        shape = RoundedCornerShape(4.dp),
+        shadowElevation = 4.dp,
+        onClick = {
+            if (onClicked != null) {
+                onClicked(note)
+            }
+        }
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = note.name,
+                color = if (active) MaterialTheme.colorScheme.inverseOnSurface else MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+
 @SuppressLint("MutableCollectionMutableState")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Preview(showBackground = true)
@@ -165,7 +221,7 @@ fun MainScreen(
     context: Context = LocalContext.current
 ) {
     val (midiChan, fontChan) = bassData
-    var chosenNotes by remember { mutableStateOf(arrayOf<PitchClass>()) }
+    var chosenPitches by remember { mutableStateOf(arrayOf<PitchClass>()) }
     var selectedLowestNote by remember { mutableStateOf(Note(PitchClass.C)) }
     var selectedHighestNote by remember { mutableStateOf(Note(PitchClass.C, 5)) }
     var possibleNotes by remember {
@@ -295,77 +351,19 @@ fun MainScreen(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
-            Row {
-                var expanded by remember { mutableStateOf(false) }
-                val notes = (0 until 88).map { v -> Note(v + Note.midiOffset) }
-                var selectedNote by remember { mutableStateOf(notes[39]) }
-                ExposedDropdownMenuBox(expanded = expanded,
-                    onExpandedChange = { e -> expanded = e }) {
-                    TextField(
-                        readOnly = true,
-                        value = selectedNote.name,
-                        onValueChange = { },
-                        label = { Text("Lowest note") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = expanded
-                            )
-                        },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                        modifier = Modifier.menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = {
-                        expanded = false
-                    }) {
-                        notes.forEach { note ->
-                            DropdownMenuItem(onClick = {
-                                selectedNote = note
-                                expanded = false
-                                selectedLowestNote = note
-                                possibleNotes =
-                                    getPossibleNotes(selectedLowestNote, selectedHighestNote)
-                            }, text = { Text(text = note.name) })
-                        }
-                    }
-                }
-            }
+            NoteRow(onChoose = { note ->
+                Log.d("Info", "note chosen: ${note.name}")
+                selectedLowestNote = note
+                possibleNotes = getPossibleNotes(selectedLowestNote, selectedHighestNote)
+            })
             Spacer(modifier = Modifier.height(8.dp))
-            Row {
-                var expanded by remember { mutableStateOf(false) }
-                val notes = (0 until 88).map { v -> Note(v + Note.midiOffset) }
-                var selectedNote by remember { mutableStateOf(notes[51]) }
-                ExposedDropdownMenuBox(expanded = expanded,
-                    onExpandedChange = { e -> expanded = e }) {
-                    TextField(
-                        readOnly = true,
-                        value = selectedNote.name,
-                        onValueChange = { },
-                        label = { Text("Highest note") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = expanded
-                            )
-                        },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                        modifier = Modifier.menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = {
-                        expanded = false
-                    }) {
-                        notes.forEach { note ->
-                            DropdownMenuItem(onClick = {
-                                selectedNote = note
-                                expanded = false
-                                selectedHighestNote = note
-                                possibleNotes =
-                                    getPossibleNotes(selectedLowestNote, selectedHighestNote)
-                            }, text = { Text(text = note.name) })
-                        }
-                    }
-                }
-            }
+            NoteRow(defaultNote = Note(PitchClass.C, 5), onChoose = { note ->
+                Log.d("Info", "note chosen: ${note.name}")
+                selectedHighestNote = note
+                possibleNotes = getPossibleNotes(selectedLowestNote, selectedHighestNote)
+            })
             Spacer(modifier = Modifier.height(16.dp))
             var tempo by remember { mutableStateOf(20) }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -377,19 +375,38 @@ fun MainScreen(
                 onValueChange = { v -> tempo = v.roundToInt() },
                 valueRange = 20F..160F
             )
-
             if (possibleNotes.isNotEmpty()) {
+                Row {
+                    Button(onClick = {
+                        val pitches = mutableListOf<PitchClass>()
+                        for (n in selectedLowestNote.midiIndex..selectedHighestNote.midiIndex) {
+                            val note = Note(n)
+                            if (!pitches.contains(note.pitch)) {
+                                pitches.add(note.pitch)
+                            }
+                        }
+                        chosenPitches = pitches.toTypedArray()
+                    }) {
+                        Text(text = "All")
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Button(onClick = {
+                        chosenPitches = arrayOf()
+                    }) {
+                        Text(text = "None")
+                    }
+                }
                 FlowRow(horizontalArrangement = Arrangement.Center, maxItemsInEachRow = 4) {
                     possibleNotes.map { it.pitch }.distinct().forEach {
                         Row(
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable {
-                                    chosenNotes = if (!chosenNotes.contains(it)) {
-                                        arrayOf(*chosenNotes, it)
+                                    chosenPitches = if (!chosenPitches.contains(it)) {
+                                        arrayOf(*chosenPitches, it)
                                     } else {
                                         arrayOf(
-                                            *chosenNotes
+                                            *chosenPitches
                                                 .filter { p ->
                                                     p != it
                                                 }
@@ -401,7 +418,7 @@ fun MainScreen(
                                 .requiredHeight(ButtonDefaults.MinHeight),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(checked = chosenNotes.contains(it), onCheckedChange = null)
+                            Checkbox(checked = chosenPitches.contains(it), onCheckedChange = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = it.toString())
                         }
@@ -419,7 +436,7 @@ fun MainScreen(
                 Thread {
                     while (playing) {
                         val notes =
-                            getPlayableNotes(chosenNotes, selectedLowestNote, selectedHighestNote)
+                            getPlayableNotes(chosenPitches, selectedLowestNote, selectedHighestNote)
                         Log.d("Info", "playableNotes: $notes")
                         if (notes.isNotEmpty() && readyToPlay) {
                             var randNote: Note

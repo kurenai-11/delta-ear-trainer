@@ -1,4 +1,4 @@
-package com.example.deltaeartrainer.ui.theme
+package com.kurenai11.deltaeartrainer.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
