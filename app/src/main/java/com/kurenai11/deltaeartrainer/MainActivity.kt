@@ -163,7 +163,7 @@ fun getPossibleNotes(lowestNote: Note, highestNote: Note): List<Note> {
 @Composable
 fun NoteRow(
     bounds: IntRange = 0 until 88,
-    onChoose: ((note: Note) -> Unit)? = null,
+    onChoose: (note: Note) -> Unit = {},
     defaultNote: Note = Note(PitchClass.C, 4)
 ) {
     var activeNote by remember { mutableStateOf(defaultNote) }
@@ -177,9 +177,7 @@ fun NoteRow(
                     active = (activeNote.midiIndex) == note.midiIndex,
                     onClicked = { clickedNote ->
                         activeNote = clickedNote
-                        if (onChoose != null) {
-                            onChoose(note)
-                        }
+                        onChoose(note)
                     })
                 Spacer(modifier = Modifier.width(4.dp))
             }
@@ -189,7 +187,7 @@ fun NoteRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteListItem(note: Note, active: Boolean, onClicked: ((note: Note) -> Unit)? = null) {
+fun NoteListItem(note: Note, active: Boolean, onClicked: (note: Note) -> Unit = {}) {
     Surface(
         color = if (active) MaterialTheme.colorScheme.surfaceTint else MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
@@ -198,9 +196,7 @@ fun NoteListItem(note: Note, active: Boolean, onClicked: ((note: Note) -> Unit)?
         shape = RoundedCornerShape(4.dp),
         shadowElevation = 4.dp,
         onClick = {
-            if (onClicked != null) {
-                onClicked(note)
-            }
+            onClicked(note)
         }
     ) {
         Box(contentAlignment = Alignment.Center) {
