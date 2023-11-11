@@ -169,18 +169,20 @@ fun NoteRow(
     var activeNote by remember { mutableStateOf(defaultNote) }
     val lazyListState = rememberLazyListState((defaultNote - 3).pianoKeyNumber - 1)
     LazyRow(state = lazyListState) {
-        items(bounds.count()) {
-            val note = Note(Note.midiOffset + it)
-            NoteListItem(
-                note = note,
-                active = (activeNote.midiIndex) == note.midiIndex,
-                onClicked = { clickedNote ->
-                    activeNote = clickedNote
-                    if (onChoose != null) {
-                        onChoose(note)
-                    }
-                })
-            Spacer(modifier = Modifier.width(4.dp))
+        for (i in bounds) {
+            val note = Note(Note.midiOffset + i)
+            item {
+                NoteListItem(
+                    note = note,
+                    active = (activeNote.midiIndex) == note.midiIndex,
+                    onClicked = { clickedNote ->
+                        activeNote = clickedNote
+                        if (onChoose != null) {
+                            onChoose(note)
+                        }
+                    })
+                Spacer(modifier = Modifier.width(4.dp))
+            }
         }
     }
 }
