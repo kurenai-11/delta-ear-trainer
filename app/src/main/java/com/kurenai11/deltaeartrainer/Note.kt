@@ -40,11 +40,11 @@ class Note private constructor() {
     val octave: Int
         get() {
             return when (pianoKeyNumber) {
-                in 0..2 -> {
+                in 1..3 -> {
                     0
                 }
 
-                in 3..88 -> {
+                in 4..88 -> {
                     ceil((pianoKeyNumber.toDouble() - 3) / 12).toInt()
                 }
 
