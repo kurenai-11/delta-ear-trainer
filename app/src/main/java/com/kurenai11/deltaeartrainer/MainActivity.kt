@@ -458,6 +458,21 @@ fun MainScreen(
             }) {
                 Text(text = if (playing) "Stop" else "Play")
             }
+            Button(onClick = {
+                val scale = Scale.NaturalMinor(Pitch.values().random())
+                val notes = scale.getNotes(4)
+                val duration = 500L
+                if (!readyToPlay) return@Button
+                Thread {
+                    for (note in notes) {
+                        playNote(midiChan, note.midiIndex)
+                        Thread.sleep(duration)
+                        stopNote(midiChan, note.midiIndex)
+                    }
+                }.start()
+            }) {
+                Text(text = "Play random natural Minor scale")
+            }
         }
     }
 }
