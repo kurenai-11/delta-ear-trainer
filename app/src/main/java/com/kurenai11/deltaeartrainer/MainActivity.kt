@@ -148,7 +148,7 @@ data class BassData(val midiChan: Int, val fontChan: Int)
 data class Preset(val name: String?, val index: Int)
 
 fun getPlayableNotes(
-    chosenNotes: Array<PitchClass>,
+    chosenNotes: Array<Pitch>,
     lowestNote: Note,
     highestNote: Note
 ): List<Note> {
@@ -164,7 +164,7 @@ fun getPossibleNotes(lowestNote: Note, highestNote: Note): List<Note> {
 fun NoteRow(
     bounds: IntRange = 0 until 88,
     onChoose: (note: Note) -> Unit = {},
-    defaultNote: Note = Note(PitchClass.C, 4)
+    defaultNote: Note = Note(Pitch.C, 4)
 ) {
     var activeNote by remember { mutableStateOf(defaultNote) }
     val lazyListState = rememberLazyListState((defaultNote - 3).pianoKeyNumber - 1)
@@ -219,9 +219,9 @@ fun MainScreen(
     context: Context = LocalContext.current
 ) {
     val (midiChan, fontChan) = bassData
-    var chosenPitches by remember { mutableStateOf(arrayOf<PitchClass>()) }
-    var selectedLowestNote by remember { mutableStateOf(Note(PitchClass.C)) }
-    var selectedHighestNote by remember { mutableStateOf(Note(PitchClass.C, 5)) }
+    var chosenPitches by remember { mutableStateOf(arrayOf<Pitch>()) }
+    var selectedLowestNote by remember { mutableStateOf(Note(Pitch.C)) }
+    var selectedHighestNote by remember { mutableStateOf(Note(Pitch.C, 5)) }
     var possibleNotes by remember {
         mutableStateOf(
             getPossibleNotes(
@@ -357,7 +357,7 @@ fun MainScreen(
                 possibleNotes = getPossibleNotes(selectedLowestNote, selectedHighestNote)
             })
             Spacer(modifier = Modifier.height(8.dp))
-            NoteRow(defaultNote = Note(PitchClass.C, 5), onChoose = { note ->
+            NoteRow(defaultNote = Note(Pitch.C, 5), onChoose = { note ->
                 Log.d("Info", "note chosen: ${note.name}")
                 selectedHighestNote = note
                 possibleNotes = getPossibleNotes(selectedLowestNote, selectedHighestNote)
@@ -376,7 +376,7 @@ fun MainScreen(
             if (possibleNotes.isNotEmpty()) {
                 Row {
                     Button(onClick = {
-                        val pitches = mutableListOf<PitchClass>()
+                        val pitches = mutableListOf<Pitch>()
                         for (n in selectedLowestNote.midiIndex..selectedHighestNote.midiIndex) {
                             val note = Note(n)
                             if (!pitches.contains(note.pitch)) {

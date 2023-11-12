@@ -9,26 +9,26 @@ class Note private constructor() {
         midiIndex = index
     }
 
-    constructor(pitchClass: PitchClass, octave: Int = 4) : this() {
+    constructor(pitch: Pitch, octave: Int = 4) : this() {
         midiIndex = if (octave == 0) {
-            if (!arrayOf(PitchClass.A, PitchClass.ASharp, PitchClass.B).contains(pitchClass)) {
+            if (!arrayOf(Pitch.A, Pitch.ASharp, Pitch.B).contains(pitch)) {
                 throw Exception("wrong input bruh")
             }
-            midiOffset + pitchClass.ordinal
+            midiOffset + pitch.ordinal
         } else {
-            3 + midiOffset + ((octave - 1) * 12) + pitchClass.ordinal
+            3 + midiOffset + ((octave - 1) * 12) + pitch.ordinal
         }
     }
 
-    val pitch: PitchClass
+    val pitch: Pitch
         get() {
             return when (midiIndex) {
                 in 0..2 -> {
-                    PitchClass.values()[midiIndex + 9]
+                    Pitch.values()[midiIndex + 9]
                 }
 
                 in 3..108 -> {
-                    PitchClass.values()[(midiIndex % 12)]
+                    Pitch.values()[(midiIndex % 12)]
                 }
 
                 else -> {
