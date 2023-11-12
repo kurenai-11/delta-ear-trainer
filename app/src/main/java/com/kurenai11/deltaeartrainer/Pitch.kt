@@ -7,6 +7,11 @@ enum class Pitch {
         return this.name.replace("Sharp", "#")
     }
 
+    fun toStringFlat(): String {
+        if (!this.name.contains("Sharp")) return this.name
+        return Pitch.values()[(this.ordinal + 1) % 12].name + "♭"
+    }
+
     operator fun plus(semitones: Int): Pitch {
         return Pitch.values()[(this.ordinal + semitones) % 12]
     }
