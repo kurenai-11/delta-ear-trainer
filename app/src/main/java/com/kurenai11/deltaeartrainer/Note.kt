@@ -14,7 +14,7 @@ class Note private constructor() {
             if (!arrayOf(Pitch.A, Pitch.ASharp, Pitch.B).contains(pitch)) {
                 throw Exception("wrong input bruh")
             }
-            midiOffset + pitch.ordinal
+            midiOffset + pitch.ordinal - 9
         } else {
             3 + midiOffset + ((octave - 1) * 12) + pitch.ordinal
         }
@@ -83,6 +83,18 @@ class Note private constructor() {
             throw Exception("wrong math bruh")
         }
         return Note(midiIndex - semitones)
+    }
+
+    operator fun rangeTo(to: Note): List<Note> {
+        val start = this.midiIndex
+        val end = to.midiIndex
+        return (start..end).map { n -> Note(n) }
+    }
+
+    operator fun rangeUntil(until: Note): List<Note> {
+        val start = this.midiIndex
+        val end = until.midiIndex
+        return (start until end).map { n -> Note(n) }
     }
 
     override fun toString(): String {

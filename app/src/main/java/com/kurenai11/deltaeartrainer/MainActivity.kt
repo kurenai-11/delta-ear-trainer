@@ -162,15 +162,15 @@ fun getPossibleNotes(lowestNote: Note, highestNote: Note): List<Note> {
 
 @Composable
 fun NoteRow(
-    bounds: IntRange = 0 until 88,
+    // lowest, highest
+    bounds: Pair<Note, Note> = Pair(Note(Pitch.A, 0), Note(Pitch.C, 8)),
     onChoose: (note: Note) -> Unit = {},
     defaultNote: Note = Note(Pitch.C, 4)
 ) {
     var activeNote by remember { mutableStateOf(defaultNote) }
-    val lazyListState = rememberLazyListState((defaultNote - 3).pianoKeyNumber - 1)
+    val lazyListState = rememberLazyListState(defaultNote.midiIndex - Note.midiOffset - 3)
     LazyRow(state = lazyListState) {
-        for (i in bounds) {
-            val note = Note(Note.midiOffset + i)
+        for (note in bounds.first..bounds.second) {
             item {
                 NoteListItem(
                     note = note,
