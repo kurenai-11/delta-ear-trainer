@@ -1,7 +1,5 @@
 package com.kurenai11.deltaeartrainer
 
-import android.util.Log
-
 class Scale private constructor(pitches: List<Pitch>, val formula: Array<Int>) {
     val root = pitches[0]
     fun getNotes(startingOctave: Int): List<Note> {
@@ -21,7 +19,6 @@ class Scale private constructor(pitches: List<Pitch>, val formula: Array<Int>) {
             // root-W-H-W-W-H-W-(W)
             val formula = arrayOf(0, 2, 1, 2, 2, 1, 2, 2)
             val pitches = formula.runningReduce { acc, i -> acc + i }.map { i -> root + i }
-            Log.d("Info", "pitches $pitches")
             return Scale(pitches, formula)
         }
     }
