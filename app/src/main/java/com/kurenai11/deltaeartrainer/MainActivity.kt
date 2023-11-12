@@ -460,7 +460,7 @@ fun MainScreen(
             }
             Button(onClick = {
                 val scale = Scale.NaturalMinor(Pitch.values().random())
-                val notes = scale.getNotes(4)
+                val notes = scale.notes(4)
                 val duration = 500L
                 if (!readyToPlay) return@Button
                 Thread {
