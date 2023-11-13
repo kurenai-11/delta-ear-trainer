@@ -163,7 +163,7 @@ fun getPossibleNotes(lowestNote: Note, highestNote: Note): List<Note> {
 @Composable
 fun NoteRow(
     // lowest, highest
-    bounds: Pair<Note, Note> = Pair(Note(Pitch.A, 0), Note(Pitch.C, 8)),
+    bounds: Pair<Note, Note> = Note(Pitch.A, 0) to Note(Pitch.C, 8),
     onChoose: (note: Note) -> Unit = {},
     defaultNote: Note = Note(Pitch.C, 4)
 ) {
@@ -459,7 +459,7 @@ fun MainScreen(
                 Text(text = if (playing) "Stop" else "Play")
             }
             Button(onClick = {
-                val scale = Scale.NaturalMinor(Pitch.values().random())
+                val scale = Scale.NaturalMinor(Pitch.random())
                 val notes = scale.notes(4)
                 val duration = 500L
                 if (!readyToPlay) return@Button

@@ -24,4 +24,10 @@ enum class Pitch {
             Pitch.values()[calc]
         }
     }
+
+    companion object {
+        fun random(): Pitch {
+            return Pitch.values().random()
+        }
+    }
 }

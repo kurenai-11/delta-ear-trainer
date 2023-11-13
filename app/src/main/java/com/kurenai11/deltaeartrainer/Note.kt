@@ -86,13 +86,13 @@ class Note private constructor() {
     }
 
     operator fun rangeTo(to: Note): List<Note> {
-        val start = this.midiIndex
+        val start = midiIndex
         val end = to.midiIndex
         return (start..end).map { n -> Note(n) }
     }
 
     operator fun rangeUntil(until: Note): List<Note> {
-        val start = this.midiIndex
+        val start = midiIndex
         val end = until.midiIndex
         return (start until end).map { n -> Note(n) }
     }
