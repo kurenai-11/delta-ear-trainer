@@ -29,5 +29,9 @@ enum class Pitch {
     fun random(): Pitch {
       return Pitch.values().random()
     }
+
+    fun fromOrdinal(ord: Int): Pitch {
+      return Pitch.values()[ord]
+    }
   }
 }

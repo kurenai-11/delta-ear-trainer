@@ -2,6 +2,8 @@ package com.kurenai11.deltaeartrainer
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -45,11 +47,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +61,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import com.kurenai11.deltaeartrainer.ui.theme.DeltaEarTrainerTheme
 import com.un4seen.bass.BASS
 import com.un4seen.bass.BASSMIDI
@@ -229,10 +233,31 @@ fun MainScreen(
   @PreviewParameter(MainScreenPreviewParameterProvider1::class) bassData: BassData,
   context: Context = LocalContext.current
 ) {
+  val preferences = context.getSharedPreferences("tempo", Context.MODE_PRIVATE)
+
   val (midiChan, fontChan) = bassData
-  var chosenPitches = remember { mutableStateListOf<Pitch>() }
-  var selectedLowestNote by remember { mutableStateOf(Note(Pitch.C)) }
-  var selectedHighestNote by remember { mutableStateOf(Note(Pitch.C, 5)) }
+  val chosenPitches = remember {
+    val set = preferences.getStringSet("chosenPitches", null) ?: emptySet()
+    set.mapNotNull { it.toIntOrNull() }.map { Pitch.fromOrdinal(it) }.toMutableStateList()
+  }
+  var selectedLowestNote by remember {
+    mutableStateOf(
+      Note(
+        preferences.getInt(
+          "lowestNote", Note(Pitch.C).midiIndex
+        )
+      )
+    )
+  }
+  var selectedHighestNote by remember {
+    mutableStateOf(
+      Note(
+        preferences.getInt(
+          "highestNote", Note(Pitch.C, 5).midiIndex
+        )
+      )
+    )
+  }
   var possibleNotes by remember {
     mutableStateOf(
       getPossibleNotes(
@@ -248,7 +273,65 @@ fun MainScreen(
 
   var playing by remember { mutableStateOf(false) }
   var prevNote by remember { mutableStateOf<Note?>(null) }
-  var tempo by remember { mutableStateOf(20) }
+  var tempo by remember { mutableStateOf(preferences.getInt("tempo", 20)) }
+
+  val loadSoundfont = remember {
+    fun(uri: Uri) {
+      BASSMIDI.BASS_MIDI_FontFree(fontChan)
+      val presetsTemp = mutableListOf<Preset>()
+      val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
+      val font = BASSMIDI.BASS_MIDI_FontInit(descriptor, 0)
+      if (font == 0) {
+        val errCode = BASS.BASS_ErrorGetCode()
+        Log.d("Info", "Font bad, $errCode")
+        return
+      } else {
+        val sf = arrayOf(BASSMIDI.BASS_MIDI_FONT())
+        sf[0].font = font
+        sf[0].bank = 0
+        sf[0].preset = -1
+        BASSMIDI.BASS_MIDI_StreamSetFonts(
+          0, sf, 1
+        ) // set default soundfont
+        BASSMIDI.BASS_MIDI_StreamSetFonts(
+          midiChan, sf, 1
+        ) // set for current stream too
+      }
+      BASSMIDI.BASS_MIDI_StreamEvent(
+        midiChan, 0, BASSMIDI.MIDI_EVENT_PROGRAM, 0
+      )
+
+      readyToPlay = true
+
+      // list presets
+      val fontInfo = BASSMIDI.BASS_MIDI_FONTINFO()
+      BASSMIDI.BASS_MIDI_FontGetInfo(font, fontInfo)
+      val presetIds = IntArray(fontInfo.presets)
+      BASSMIDI.BASS_MIDI_FontGetPresets(font, presetIds)
+      for (i in presetIds.indices) {
+        val presetId = presetIds[i]
+        val presetName = BASSMIDI.BASS_MIDI_FontGetPreset(font, presetId, 0)
+        Log.d("Info", "Preset name: $presetName ind: $presetId")
+        presetsTemp.add(Preset(presetName, presetId))
+      }
+      if (presetsTemp.size > 0) {
+        presets = presetsTemp.toTypedArray()
+        selectedPreset = presets[0]
+      }
+    }
+  }
+
+  LaunchedEffect(Unit) {
+    val uriString = preferences.getString("soundfontUri", null) ?: ""
+    if (uriString.isEmpty()) return@LaunchedEffect
+    loadSoundfont(Uri.parse(uriString))
+    val presetIndex = preferences.getInt("soundfontPreset", -1)
+    if (presetIndex == -1) return@LaunchedEffect
+    selectedPreset = presets.find { it.index == presetIndex }
+    BASSMIDI.BASS_MIDI_StreamEvent(
+      midiChan, 0, BASSMIDI.MIDI_EVENT_PROGRAM, presetIndex
+    )
+  }
 
   Scaffold(topBar = {
     TopAppBar(
@@ -288,11 +371,11 @@ fun MainScreen(
         contentDescription = "Play"
       )
     }
-  }) {
+  }) { paddingValues ->
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .padding(it)
+        .padding(paddingValues)
         .padding(8.dp)
     ) {
       Column(
@@ -309,46 +392,12 @@ fun MainScreen(
           Log.d("Info", "is absolute ${it?.isAbsolute}")
           Log.d("Info", "is relative ${it?.isRelative}")
           if (it == null) return@rememberLauncherForActivityResult
-          BASSMIDI.BASS_MIDI_FontFree(fontChan)
-          val presetsTemp = mutableListOf<Preset>()
-          val descriptor = context.contentResolver.openFileDescriptor(it, "r")
-          val font = BASSMIDI.BASS_MIDI_FontInit(descriptor, 0)
-          if (font == 0) {
-            val errCode = BASS.BASS_ErrorGetCode()
-            Log.d("Info", "Font bad, $errCode")
-            return@rememberLauncherForActivityResult
-          } else {
-            val sf = arrayOf(BASSMIDI.BASS_MIDI_FONT())
-            sf[0].font = font
-            sf[0].bank = 0
-            sf[0].preset = -1
-            BASSMIDI.BASS_MIDI_StreamSetFonts(
-              0, sf, 1
-            ) // set default soundfont
-            BASSMIDI.BASS_MIDI_StreamSetFonts(
-              midiChan, sf, 1
-            ) // set for current stream too
-          }
-          BASSMIDI.BASS_MIDI_StreamEvent(
-            midiChan, 0, BASSMIDI.MIDI_EVENT_PROGRAM, 0
+          context.contentResolver.takePersistableUriPermission(
+            it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
           )
-
-          readyToPlay = true
-
-          // list presets
-          val fontInfo = BASSMIDI.BASS_MIDI_FONTINFO()
-          BASSMIDI.BASS_MIDI_FontGetInfo(font, fontInfo)
-          val presetIds = IntArray(fontInfo.presets)
-          BASSMIDI.BASS_MIDI_FontGetPresets(font, presetIds)
-          for (i in presetIds.indices) {
-            val presetId = presetIds[i]
-            val presetName = BASSMIDI.BASS_MIDI_FontGetPreset(font, presetId, 0)
-            Log.d("Info", "Preset name: $presetName ind: $presetId")
-            presetsTemp.add(Preset(presetName, presetId))
-          }
-          if (presetsTemp.size > 0) {
-            presets = presetsTemp.toTypedArray()
-            selectedPreset = presets[0]
+          loadSoundfont(it)
+          preferences.edit {
+            putString("soundfontUri", it.toString())
           }
         }
         Button(onClick = { selectFileActivity.launch(arrayOf("application/octet-stream")) }) {
@@ -385,6 +434,7 @@ fun MainScreen(
                     BASSMIDI.BASS_MIDI_StreamEvent(
                       midiChan, 0, BASSMIDI.MIDI_EVENT_PROGRAM, preset.index
                     )
+                    preferences.edit { putInt("soundfontPreset", preset.index) }
                   }, text = { Text(text = preset.name ?: "(no name)") })
                 }
               }
@@ -395,12 +445,14 @@ fun MainScreen(
         NoteRow(onChoose = { note ->
           Log.d("Info", "note chosen: ${note.name}")
           selectedLowestNote = note
+          preferences.edit { putInt("lowestNote", note.midiIndex) }
           possibleNotes = getPossibleNotes(selectedLowestNote, selectedHighestNote)
-        })
+        }, defaultNote = selectedLowestNote)
         Spacer(modifier = Modifier.height(8.dp))
-        NoteRow(defaultNote = Note(Pitch.C, 5), onChoose = { note ->
+        NoteRow(defaultNote = selectedHighestNote, onChoose = { note ->
           Log.d("Info", "note chosen: ${note.name}")
           selectedHighestNote = note
+          preferences.edit { putInt("highestNote", note.midiIndex) }
           possibleNotes = getPossibleNotes(selectedLowestNote, selectedHighestNote)
         })
         Spacer(modifier = Modifier.height(16.dp))
@@ -409,9 +461,13 @@ fun MainScreen(
           Text(text = tempo.toString())
         }
         Slider(
-          value = tempo.toFloat(),
-          onValueChange = { v -> tempo = v.roundToInt() },
-          valueRange = 20F..160F
+          value = tempo.toFloat(), onValueChange = { v ->
+            val rounded = v.roundToInt()
+            tempo = rounded
+            preferences.edit {
+              putInt("tempo", rounded)
+            }
+          }, valueRange = 20F..160F
         )
         if (possibleNotes.isNotEmpty()) {
           Row {
@@ -425,12 +481,18 @@ fun MainScreen(
               }
               chosenPitches.clear()
               chosenPitches.addAll(pitches)
+              preferences.edit {
+                putStringSet("chosenPitches", chosenPitches.map { it.ordinal.toString() }.toSet())
+              }
             }) {
               Text(text = "All")
             }
             Spacer(modifier = Modifier.width(6.dp))
             Button(onClick = {
               chosenPitches.clear()
+              preferences.edit {
+                putStringSet("chosenPitches", emptySet())
+              }
             }) {
               Text(text = "None")
             }
@@ -445,6 +507,13 @@ fun MainScreen(
                       chosenPitches.add(it)
                     } else {
                       chosenPitches.remove(it)
+                    }
+                    preferences.edit {
+                      putStringSet("chosenPitches",
+                        chosenPitches
+                          .map { it.ordinal.toString() }
+                          .toSet()
+                      )
                     }
                     Log.d("Info", "chosenNote: $it")
                   }
